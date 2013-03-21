@@ -1,0 +1,7 @@
+Violet 		aa66cc	170, 102, 204
+Red		ff4444	255, 68, 68
+Green		99cc00	153, 204, 0
+Yellow		ffbb33	255, 187, 51
+Blue		33b5e5	51, 181, 229
+Hole		e0e0e0	224, 224, 224
+Background 	e8e8e8	232, 232, 232
