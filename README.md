@@ -1,4 +1,4 @@
 7squared
 ========
 
-A clone on the 7X7 game
+A clone of the 7X7 game.
