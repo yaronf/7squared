@@ -1,9 +1,15 @@
 using Gee;
 
+/**
+ * The piece, actually only its color.
+ */
 public enum Piece {
     VIOLET, RED, GREEN, YELLOW, BLUE, HOLE
 }
 
+/**
+ * A position on the board.
+ */
 public class Position {
     public int x {get; set;}
     public int y {get; set;}
@@ -13,6 +19,9 @@ public class Position {
         this.y = y;
     }
 
+    /**
+     * Generate a random, valid position
+     */
     public static Position get_random() {
         var r = new Rand();
         var x = r.int_range(0, SIZE);
@@ -34,6 +43,9 @@ const int SIZE = 7;
 const int MIN_SEQ = 4;
 const int MAX_PENDING = 6;
 
+/**
+ * The game "model", a logical abstraction of the 7squared game.
+ */
 public class GameModel: Object {
     private Piece [, ] board = new Piece[7, 7];
     public int level {get; private set;}
@@ -81,6 +93,12 @@ public class GameModel: Object {
         }
     }
 
+    /**
+     * The model was changed.
+     *
+     * This signal should be emitted whenever a change is made to the model that
+     * potentially necessitates redrawing on the view.
+     */
     public signal void model_changed();
 
     private Piece random_piece() {
@@ -97,6 +115,11 @@ public class GameModel: Object {
         model_changed();
     }
 
+    /**
+     * Place pieces at random positions on the board.
+     *
+     * @param num Number of pieces.
+     */
     public void place_random_pieces(int num) {
         // This only works if the board is reasonably empty
         var filled = 0;
@@ -118,6 +141,12 @@ public class GameModel: Object {
         this.new_position = to;
     }
 
+    /**
+     * Place all pending pieces on the board.
+     *
+     * Determine what are the remaining holes, and then fill as many as necessary by
+     * pieces from the "pending" structure.
+     */
     private void place_pending_pieces() {
         var r = new Rand();
         var holes = new ArrayList<Position>();
@@ -144,10 +173,18 @@ public class GameModel: Object {
     }
 
     private static bool pos_equal(Position a, Position b) {
-        // stdout.printf("Compare "+a.to_string()+","+b.to_string() + "-> " + a.equals(b).to_string() + "\n");
         return a.equals(b);
     }
 
+    /**
+     * Compute legal moves from a given position.
+     *
+     * Compute the legal moves from th eposition, that is,
+     * all positions that are on a continuous area that contains
+     * the source position.
+     *
+     * @param from The position to start from.
+     */
     public ArrayList<Position> legal_moves(Position from) {
         var moves = new ArrayList<Position>((EqualFunc) pos_equal);
         var shadow = new bool[SIZE, SIZE];
@@ -278,10 +315,16 @@ public class GameModel: Object {
         this.level = 1 + (moves - 1)/40;
     }
 
+    /**
+     * How many lines should be completed before user moves to next level?
+     */
     public int lines_to_next_level() {
         return 40 * level - moves;
     }
 
+    /*
+     * Do nothing, just signal that some change occured to the model.
+     */
     public void nop() {
         model_changed();
     }
