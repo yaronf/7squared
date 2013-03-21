@@ -91,6 +91,9 @@ class GameView {
         this.draw_view();
     }
 
+    /**
+     * Convert well-known colors into RGB values.
+     */
     int color_for_piece(Piece p) {
         switch (p) {
             case Piece.VIOLET:  return 0xaa66cc;
