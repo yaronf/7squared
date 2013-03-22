@@ -1,6 +1,9 @@
 using Gtk;
 using Cairo;
 
+/**
+ * The game's main driver.
+ */
 public class Main {
     /**
      * The exit button was clicked.
