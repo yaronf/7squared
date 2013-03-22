@@ -1,6 +1,9 @@
 using Gtk;
 using Cairo;
 
+/**
+ * A GTK button in the shape of a simple square.
+ */
 public class Square: Button {
     private static const int BORDER_WIDTH = 1;
     private static const int WIDTH = 45;
@@ -58,7 +61,10 @@ public class Square: Button {
     }
 }
 
-class GameView {
+/**
+ * The game's graphical view.
+ */
+public class GameView: Object {
     private GameModel model;
     private Builder builder;
     private Position selected_position = null;
@@ -72,11 +78,13 @@ class GameView {
     const int BOARD_SQUARE_WIDTH = 45;
     const int PENDING_SQUARE_WIDTH = 30;
 
+    /**
+     * Create a new view, mostly based on a Glade-constructed "builder" file.
+     */
     public GameView(GameModel model, Builder builder) {
         this.model = model;
         this.builder = builder;
         this.window = builder.get_object("window") as Gtk.Window;
-        AspectFrame board_frame = builder.get_object("board-frame") as AspectFrame;
         this.board = builder.get_object("game-board") as Grid;
         this.pending = builder.get_object("pending") as Grid;
         this.header_box = builder.get_object("header-box") as Box;
@@ -86,6 +94,9 @@ class GameView {
         model.model_changed.connect(on_model_changed);
     }
 
+    /**
+     * redraw the view when the model changes.
+     */
     private void on_model_changed(GameModel m) {
         // stdout.printf("on_model_changed\n");
         this.draw_view();
@@ -107,6 +118,9 @@ class GameView {
         }
     }
 
+    /**
+     * A game piece was clicked.
+     */
     private void on_clicked(Button source) {
         assert(source is Square);
         Position position = ((Square) source).position;
@@ -130,6 +144,9 @@ class GameView {
         }
     }
 
+    /**
+     * Draw the whole view.
+     */
     public void draw_view() {
         draw_board();
         draw_pending();
@@ -139,13 +156,19 @@ class GameView {
         header_box.show_all();
     }
 
+    /**
+     * Draw the top part of the view
+     */
     private void draw_header() {
         score_label.set_text("Score: " + model.score.to_string());
         level_label.set_text("Level " + model.level.to_string());
         to_next_level_label.set_text(model.lines_to_next_level().to_string() + " lines to next level");
     }
 
-    public void draw_board() {
+    /**
+     * Draw the board.
+     */
+    void draw_board() {
         for (int x = 0; x < SIZE; x++) {
             for (int y = 0; y < SIZE; y++) {
                 var position = new Position(x, y);
@@ -162,6 +185,9 @@ class GameView {
         }
     }
 
+    /**
+     * Draw the pending pieces (those that will be placed on the board in the next round).
+     */
     void draw_pending() {
         for (int x = 0; x < 3; x++) {
             for (int y = 0; y < 2; y++) {
