@@ -10,7 +10,8 @@ public class Main {
      *
      * This is the signal handler for the GUI's Exit button. You can ignore the compilation warning.
      */
-    void exit_clicked() {
+    [CCode (instance_pos = -1)]
+    public void exit_clicked() {
         Gtk.main_quit();
     }
 
