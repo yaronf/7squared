@@ -23,7 +23,7 @@ public class Main {
             var builder = new Builder();
             builder.add_from_file("main.ui");
             builder.connect_signals(null);
-            var window = builder.get_object("main_window") as Gtk.Window;
+            var window = builder.get_object("main-window") as Gtk.Window;
             window.destroy.connect(Gtk.main_quit);
 
             var view = new GameView(model, builder);

@@ -75,6 +75,9 @@ public class GameView: Object {
     private Label score_label;
     private Label level_label;
     private Label to_next_level_label;
+    private Label undo_label;
+    private Label move_anywhere_label;
+    private ToggleButton move_anywhere_button;
     const int BOARD_SQUARE_WIDTH = 45;
     const int PENDING_SQUARE_WIDTH = 30;
 
@@ -91,7 +94,12 @@ public class GameView: Object {
         this.score_label = builder.get_object("score-label") as Label;
         this.level_label = builder.get_object("level-label") as Label;
         this.to_next_level_label = builder.get_object("to-next-level-label") as Label;
+        this.undo_label = builder.get_object("undo-label") as Label;
+        this.move_anywhere_label = builder.get_object("move-anywhere-label") as Label;
+        this.move_anywhere_button = builder.get_object("move-anywhere-button") as ToggleButton;
+        move_anywhere_button.clicked.connect(move_anywhere_clicked);
         model.model_changed.connect(on_model_changed);
+        model.model_finished.connect(on_model_finished);
     }
 
     /**
@@ -100,6 +108,11 @@ public class GameView: Object {
     private void on_model_changed(GameModel m) {
         // stdout.printf("on_model_changed\n");
         this.draw_view();
+    }
+
+    private void on_model_finished(GameModel m) {
+        // stdout.printf("on_model_changed\n");
+        Gtk.main_quit();
     }
 
     /**
@@ -118,6 +131,11 @@ public class GameView: Object {
         }
     }
 
+    [CCode (instance_pos = -1)]
+    public void move_anywhere_clicked(Button source) {
+        model.nop();
+    }
+
     /**
      * A game piece was clicked.
      */
@@ -126,20 +144,36 @@ public class GameView: Object {
         Position position = ((Square) source).position;
         // stdout.printf("Clicked: %s\n", position.to_string());
         if (selected_position == null) {
+            // no selected position, select
+            stdout.printf("no selected\n");
             if (model.get_piece_at(position) != Piece.HOLE) {
                 selected_position = position;
                 model.nop();
             } // else do nothing
-        } else if (selected_position != null && selected_position.equals(position)) { // do nothing, other than deselcting the piece
+        } else if (selected_position != null && selected_position.equals(position)) {
+            // clicked on selected position: deselct the piece
+            stdout.printf("deselect\n");
             selected_position = null;
             model.nop();
-        } else if ((selected_position != null) && (model.get_piece_at(position) == Piece.HOLE)) {
-            if (model.is_legal_move(selected_position, position)) {
+        } else if ((selected_position != null) && (model.get_piece_at(position) != Piece.HOLE)) {
+            // illegal, deselect
+            selected_position = null;
+            model.nop();
+        } else {
+            // trying to move into a hole. Can we make this move?
+            var move_anywhere = move_anywhere_button.get_active();
+            if (move_anywhere) {
+                model.move_anywheres--;
+                move_anywhere_button.set_active(false);
+            }
+            stdout.printf("move anywhere: " + move_anywhere.to_string() + "\n");
+            if (model.is_legal_move(selected_position, position, move_anywhere)) {
                 model.move(selected_position, position);
                 selected_position = null;
                 model.complete_round();
             } else {
                 selected_position = null;
+                model.nop();
             }
         }
     }
@@ -163,6 +197,19 @@ public class GameView: Object {
         score_label.set_text("Score: " + model.score.to_string());
         level_label.set_text("Level " + model.level.to_string());
         to_next_level_label.set_text(model.lines_to_next_level().to_string() + " lines to next level");
+        undo_label.set_text(model.undos.to_string());
+        move_anywhere_label.set_text(model.move_anywheres.to_string());
+        move_anywhere_button.set_sensitive(model.move_anywheres > 0);
+        // TODO: we try to color the button when it is active
+        if (!move_anywhere_button.get_active()) {
+            move_anywhere_button.override_background_color(StateFlags.NORMAL, null);
+        } else {
+            Gdk.Color red;
+            Gdk.Color.parse("red", out red);
+            var style = move_anywhere_button.get_style();
+            style.bg[StateFlags.NORMAL] = red;
+            move_anywhere_button.set_style(style);
+        }
     }
 
     /**

@@ -23,7 +23,7 @@
     <property name="can_focus">False</property>
     <property name="pixbuf">media/magic-wand.png</property>
   </object>
-  <object class="GtkWindow" id="main_window">
+  <object class="GtkWindow" id="main-window">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">7 Squared</property>
     <property name="window_position">center</property>
@@ -38,7 +38,7 @@
             <property name="can_focus">False</property>
             <property name="layout_style">start</property>
             <child>
-              <object class="GtkButton" id="exit_button">
+              <object class="GtkButton" id="exit-button">
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -58,7 +58,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="new_button">
+              <object class="GtkButton" id="new-button">
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -77,29 +77,27 @@
               </packing>
             </child>
             <child>
-              <object class="GtkBox" id="move_anywhere_box">
+              <object class="GtkBox" id="move-anywhere-box">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkButton" id="move_anywhere_button">
+                  <object class="GtkToggleButton" id="move-anywhere-button">
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <property name="has_tooltip">True</property>
                     <property name="tooltip_markup" translatable="yes">Move Anywhere</property>
-                    <property name="tooltip_text" translatable="yes">Move Anywhere</property>
                     <property name="use_action_appearance">False</property>
                     <property name="image">magic-wand</property>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="move_anywhere_label">
+                  <object class="GtkLabel" id="move-anywhere-label">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="valign">end</property>
@@ -124,7 +122,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkButton" id="undo_button">
+                  <object class="GtkButton" id="undo-button">
                     <property name="use_action_appearance">False</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -141,7 +139,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="undo_label">
+                  <object class="GtkLabel" id="undo-label">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="valign">end</property>
@@ -162,7 +160,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="help_button">
+              <object class="GtkButton" id="help-button">
                 <property name="use_action_appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>

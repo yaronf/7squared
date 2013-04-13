@@ -42,6 +42,8 @@ public class Position {
 const int SIZE = 7;
 const int MIN_SEQ = 4;
 const int MAX_PENDING = 6;
+const int INITIAL_UNDOS = 2;
+const int INITIAL_MOVE_ANYWHERES = 2;
 
 /**
  * The game "model", a logical abstraction of the 7squared game.
@@ -50,8 +52,10 @@ public class GameModel: Object {
     private Piece [, ] board = new Piece[7, 7];
     public int level {get; private set;}
     private int moves;
+    private int lines;
+    private int occupied;
     public int undos {get; private set;}
-    public int move_anywheres {get; private set;}
+    public int move_anywheres {get; set;}
     public int score {get; private set;}
     public Position? new_position {get; private set;}
     private int high_score;
@@ -60,8 +64,10 @@ public class GameModel: Object {
     public void initialize_game() {
         this.level = 1;
         this.moves = 0;
-        this.undos = 0;
-        this.move_anywheres = 0;
+        this.lines = 0;
+        this.occupied = 0;
+        this.undos = INITIAL_UNDOS;
+        this.move_anywheres = INITIAL_MOVE_ANYWHERES;
         this.score = 0;
         this.new_position = null;
         for (int i=0; i<SIZE; i++)
@@ -101,6 +107,8 @@ public class GameModel: Object {
      */
     public signal void model_changed();
 
+    public signal void model_finished();
+
     private Piece random_piece() {
         var r = new Rand();
         return (Piece) r.int_range(Piece.VIOLET, Piece.HOLE);
@@ -123,12 +131,14 @@ public class GameModel: Object {
     public void place_random_pieces(int num) {
         // This only works if the board is reasonably empty
         var filled = 0;
+        assert (occupied+num < SIZE*SIZE);
         while (filled < num) {
             Position pos = Position.get_random();
             var p = this.random_piece();
             if (get_piece_at(pos) == Piece.HOLE) {
                 set_piece_at(pos, p);
                 filled++;
+                occupied++;
             }
         }
     }
@@ -159,11 +169,12 @@ public class GameModel: Object {
             }
         }
         foreach (Piece p in pending_pieces) {
-            if (p != Piece.HOLE) {
+            if (p != Piece.HOLE && occupied < SIZE*SIZE) {
                 var random_hole_idx = r.int_range(0, holes.size);
                 var random_hole = holes.get(random_hole_idx);
                 set_piece_at(random_hole, p);
                 holes.remove_at(random_hole_idx);
+                occupied++;
             }
         }
     }
@@ -217,9 +228,13 @@ public class GameModel: Object {
         return moves;
     }
 
-    public bool is_legal_move(Position from, Position to) {
-        var moves = this.legal_moves(from);
-        return moves.contains(to);
+    public bool is_legal_move(Position from, Position to, bool move_anywhere) {
+        if (move_anywhere) {
+            return true;
+        } else {
+            var moves = this.legal_moves(from);
+            return moves.contains(to);
+        }
     }
 
     static delegate void Incrementor(int x1, int y1, out int x2, out int y2);
@@ -260,66 +275,74 @@ public class GameModel: Object {
         return positions;
     }
 
-    public ArrayList<Position> find_complete_lines() {
-        var positions = new ArrayList<Position>();
+    public void find_complete_lines(out ArrayList<Position> positions, out int count_lines) {
         ArrayList<Position> p;
+        positions = new ArrayList<Position>();
+        count_lines = 0;
 
         for (int x = 0; x < SIZE; x++) {
             p = traverse_line(x, 0, (x, y, out a, out b) => {a = x; b = y+1;});
+            if (p.size > 0) count_lines++;
             positions.add_all(p);
         }
 
         for (int y = 0; y < SIZE; y++) {
             p = traverse_line(0, y, (x, y, out a, out b) => {a = x+1; b = y;});
+            if (p.size > 0) count_lines++;
             positions.add_all(p);
         }
 
         for (int x = 0; x < SIZE; x++) {
             p = traverse_line(x, 0, (x, y, out a, out b) => {a = x+1; b = y+1;});
+            if (p.size > 0) count_lines++;
             positions.add_all(p);
         }
 
         for (int y = 1; y < SIZE; y++) {
             p = traverse_line(0, y, (x, y, out a, out b) => {a = x+1; b = y+1;});
+            if (p.size > 0) count_lines++;
             positions.add_all(p);
         }
 
         for (int y = 0; y < SIZE; y++) {
             p = traverse_line(0, y, (x, y, out a, out b) => {a = x+1; b = y-1;});
+            if (p.size > 0) count_lines++;
             positions.add_all(p);
         }
 
         for (int x = 1; x < SIZE; x++) {
             p = traverse_line(x, SIZE-1, (x, y, out a, out b) => {a = x+1; b = y-1;});
+            if (p.size > 0) count_lines++;
             positions.add_all(p);
         }
-
-        return positions;
     }
 
     private int calculate_score(int level, ArrayList<Position> positions) {
+        // TODO: we cannot figure out the scoring in the original game
         return 5 * positions.size;
     }
 
-    void clear_complete_lines(out bool found, out int score) {
-        var positions = find_complete_lines();
+    void clear_complete_lines(out int count_lines, out int score) {
+        ArrayList<Position> positions;
+        find_complete_lines(out positions, out count_lines);
         foreach (Position p in positions) {
-            set_piece_at(p, Piece.HOLE);
+            if (get_piece_at(p) != Piece.HOLE) {
+                set_piece_at(p, Piece.HOLE);
+                occupied--;
+            }
         }
-        found = (positions.size != 0);
         score = calculate_score(level, positions);
     }
 
     void increment_move_count() {
         this.moves++;
-        this.level = 1 + (moves - 1)/40;
     }
 
     /**
      * How many lines should be completed before user moves to next level?
      */
     public int lines_to_next_level() {
-        return 40 * level - moves;
+        return 40 * level - lines;
     }
 
     /*
@@ -330,17 +353,31 @@ public class GameModel: Object {
     }
 
     public void complete_round() {
-        bool found;
         int delta_score;
-        clear_complete_lines(out found, out delta_score);
+        int count_lines;
+        int lines_this_move;
+        clear_complete_lines(out count_lines, out delta_score);
         score += delta_score;
-        if (!found) {
-            place_pending_pieces();
-            clear_complete_lines(out found, out delta_score); // again!
-            score += delta_score;
-            prepare_pending();
+        lines_this_move = count_lines;
+        if (count_lines > 1) { // only user-initiated combos count
+            move_anywheres++;
         }
-        increment_move_count();
+        if (count_lines == 0) {
+            // user could not complete a line, so finish the move
+            place_pending_pieces();
+            clear_complete_lines(out count_lines, out delta_score); // again!
+            lines_this_move += count_lines;
+            prepare_pending();
+            level = lines / 40 + 1;
+            increment_move_count();
+        }
+        lines += lines_this_move;
+        level = lines / 40 + 1;
+        score += delta_score;
         model_changed();
+        if (occupied == SIZE*SIZE) {
+            stdout.printf("board full\n");
+            model_finished();
+        }
     }
 }
