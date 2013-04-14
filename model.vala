@@ -10,7 +10,7 @@ public enum Piece {
 /**
  * A position on the board.
  */
-public class Position {
+public class Position: Object {
     public int x {get; set;}
     public int y {get; set;}
 
@@ -56,10 +56,24 @@ public class GameModel: Object {
     private int occupied;
     public int undos {get; private set;}
     public int move_anywheres {get; set;}
-    public int score {get; private set;}
+    public int score {get; set;}
     public Position? new_position {get; private set;}
-    private int high_score;
-    public Piece [] pending_pieces = new Piece[MAX_PENDING];
+    public int high_score {get; private set;}
+    public Piece [] pending_pieces {get; private set;}
+
+    public string serialize() {
+        var o = new Json.Object();
+        o.set_int_member("level", level);
+        o.set_int_member("moves", moves);
+        o.set_int_member("lines", lines);
+        o.set_int_member("move_anywheres", move_anywheres);
+        var n = new Json.Node(Json.NodeType.OBJECT);
+        n.set_object(o);
+        var generator = new Json.Generator();
+        generator.set_root(n);
+        size_t len;
+        return generator.to_data(out len);
+    }
 
     public void initialize_game() {
         this.level = 1;
@@ -73,6 +87,7 @@ public class GameModel: Object {
         for (int i=0; i<SIZE; i++)
             for (int j=0; j<SIZE; j++)
                 board[i, j] = Piece.HOLE;
+        this.pending_pieces = new Piece[MAX_PENDING];
         prepare_pending();
     }
 
