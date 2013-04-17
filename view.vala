@@ -110,12 +110,12 @@ public class GameView: Object {
 
         //stdout.printf("model: " + model.serialize() + "\n");
 
-        size_t len;
-        string json = Json.gobject_to_data(model, out len);
-        stdout.printf("model: " + json + "\n");
-        GameModel model2 = (GameModel) Json.gobject_from_data(typeof(GameModel), json, (ssize_t) len);
-        string json2 = Json.gobject_to_data(model2, out len);
-        stdout.printf("model2: " + json + "\n");
+        string json = model.to_json();
+        stdout.printf("model: %s\n", json);
+        GameModel model2 = new model.from_json(json);
+        stdout.printf("deser done\n");
+        string json2 = model2.to_json();
+        stdout.printf("model2: " + json2 + "\n");
 
         this.draw_view();
     }

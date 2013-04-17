@@ -61,7 +61,7 @@ public class GameModel: Object {
     public int high_score {get; private set;}
     public Piece [] pending_pieces {get; private set;}
 
-    public string serialize() {
+    public string to_json() {
         var o = new Json.Object();
         o.set_int_member("level", level);
         o.set_int_member("moves", moves);
@@ -73,6 +73,18 @@ public class GameModel: Object {
         generator.set_root(n);
         size_t len;
         return generator.to_data(out len);
+    }
+
+    public GameModel.from_json(string json) {
+        base();
+        var parser = new Json.Parser();
+        parser.load_from_data(json);
+        var root = parser.get_root();
+        var o = root.get_object();
+        level = (int) o.get_int_member("level"); // this returns int64
+        moves = (int) o.get_int_member("moves");
+        lines = (int) o.get_int_member("lines");
+        move_anywheres = (int) o.get_int_member("move_anywheres");
     }
 
     public void initialize_game() {
