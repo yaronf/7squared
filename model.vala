@@ -57,7 +57,6 @@ public class GameModel: Object {
     public int undos {get; private set;}
     public int move_anywheres {get; set;}
     public int score {get; set;}
-    public Position? new_position {get; private set;}
     public int high_score {get; private set;}
     public Piece [] pending_pieces {get; private set;}
 
@@ -66,13 +65,27 @@ public class GameModel: Object {
         o.set_int_member("level", level);
         o.set_int_member("moves", moves);
         o.set_int_member("lines", lines);
+        o.set_int_member("occupied", occupied);
+        o.set_int_member("undos", undos);
         o.set_int_member("move_anywheres", move_anywheres);
+        o.set_int_member("score", score);
+        o.set_int_member("high_score", high_score);
+        var a1 = new Json.Array.sized(MAX_PENDING);
+        foreach (Piece p in pending_pieces) {
+            a1.add_int_element((int) p);
+        }
+        o.set_array_member("pending_pieces", a1);
+
         var n = new Json.Node(Json.NodeType.OBJECT);
         n.set_object(o);
         var generator = new Json.Generator();
         generator.set_root(n);
         size_t len;
         return generator.to_data(out len);
+    }
+
+    public GameModel() {
+            pending_pieces = new Piece[MAX_PENDING];
     }
 
     public GameModel.from_json(string json) {
@@ -84,7 +97,16 @@ public class GameModel: Object {
         level = (int) o.get_int_member("level"); // this returns int64
         moves = (int) o.get_int_member("moves");
         lines = (int) o.get_int_member("lines");
+        occupied = (int) o.get_int_member("occupied");
+        undos = (int) o.get_int_member("undos");
         move_anywheres = (int) o.get_int_member("move_anywheres");
+        score = (int) o.get_int_member("score");
+        high_score = (int) o.get_int_member("high_score");
+        var a1 = o.get_array_member("pending_pieces");
+        pending_pieces = new Piece[MAX_PENDING];
+        for (int i=0; i<MAX_PENDING; i++) {
+            this.pending_pieces[i] = (Piece) (a1.get_int_element(i));
+        }
     }
 
     public void initialize_game() {
@@ -95,7 +117,6 @@ public class GameModel: Object {
         this.undos = INITIAL_UNDOS;
         this.move_anywheres = INITIAL_MOVE_ANYWHERES;
         this.score = 0;
-        this.new_position = null;
         for (int i=0; i<SIZE; i++)
             for (int j=0; j<SIZE; j++)
                 board[i, j] = Piece.HOLE;
@@ -175,7 +196,6 @@ public class GameModel: Object {
         Piece p = get_piece_at(from);
         set_piece_at(to, p);
         set_piece_at(from, Piece.HOLE);
-        this.new_position = to;
     }
 
     /**
@@ -402,7 +422,8 @@ public class GameModel: Object {
         level = lines / 40 + 1;
         score += delta_score;
         model_changed();
-        if (occupied == SIZE*SIZE) {
+//        if (occupied == SIZE*SIZE) {
+    if (occupied > 12) {
             stdout.printf("board full\n");
             model_finished();
         }

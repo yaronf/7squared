@@ -78,6 +78,7 @@ public class GameView: Object {
     private Label undo_label;
     private Label move_anywhere_label;
     private ToggleButton move_anywhere_button;
+    private Window score_dialog;
     const int BOARD_SQUARE_WIDTH = 45;
     const int PENDING_SQUARE_WIDTH = 30;
 
@@ -110,19 +111,25 @@ public class GameView: Object {
 
         //stdout.printf("model: " + model.serialize() + "\n");
 
-        string json = model.to_json();
-        stdout.printf("model: %s\n", json);
-        GameModel model2 = new model.from_json(json);
-        stdout.printf("deser done\n");
-        string json2 = model2.to_json();
-        stdout.printf("model2: " + json2 + "\n");
+//~         string json = model.to_json();
+//~         stdout.printf("model: %s\n", json);
+//~         GameModel model2 = new model.from_json(json);
+//~         stdout.printf("deser done\n");
+//~         string json2 = model2.to_json();
+//~         stdout.printf("model2: " + json2 + "\n");
 
         this.draw_view();
     }
 
     private void on_model_finished(GameModel m) {
-        // stdout.printf("on_model_changed\n");
-        Gtk.main_quit();
+        var builder = new Builder();
+        builder.add_from_file("score.ui");
+        builder.connect_signals(null);
+        this.score_dialog = builder.get_object("score-dialog") as Gtk.Window;
+        var score_label = builder.get_object("score-label") as Label;
+        score_label.set_text("Score: " + this.model.score.to_string());
+
+        score_dialog.show_all();
     }
 
     /**
@@ -155,7 +162,7 @@ public class GameView: Object {
         // stdout.printf("Clicked: %s\n", position.to_string());
         if (selected_position == null) {
             // no selected position, select
-            stdout.printf("no selected\n");
+            stdout.printf("no selected position\n");
             if (model.get_piece_at(position) != Piece.HOLE) {
                 selected_position = position;
                 model.nop();
@@ -176,7 +183,7 @@ public class GameView: Object {
                 model.move_anywheres--;
                 move_anywhere_button.set_active(false);
             }
-            stdout.printf("move anywhere: " + move_anywhere.to_string() + "\n");
+            // stdout.printf("move anywhere: " + move_anywhere.to_string() + "\n");
             if (model.is_legal_move(selected_position, position, move_anywhere)) {
                 model.move(selected_position, position);
                 selected_position = null;
