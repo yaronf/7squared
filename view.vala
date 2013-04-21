@@ -78,6 +78,7 @@ public class GameView: Object {
     private Label undo_label;
     private Label move_anywhere_label;
     private ToggleButton move_anywhere_button;
+    private Button new_game_button;
     private Window score_dialog;
     const int BOARD_SQUARE_WIDTH = 45;
     const int PENDING_SQUARE_WIDTH = 30;
@@ -99,8 +100,39 @@ public class GameView: Object {
         this.move_anywhere_label = builder.get_object("move-anywhere-label") as Label;
         this.move_anywhere_button = builder.get_object("move-anywhere-button") as ToggleButton;
         move_anywhere_button.clicked.connect(move_anywhere_clicked);
-        model.model_changed.connect(on_model_changed);
-        model.model_finished.connect(on_model_finished);
+        this.new_game_button = builder.get_object("new-game-button") as Button;
+        new_game_button.clicked.connect(on_new_game_clicked);
+        connect_model_signals(model);
+    }
+
+    private void connect_model_signals(GameModel m) {
+        m.model_changed.connect(on_model_changed);
+        m.model_finished.connect(on_model_finished);
+    }
+
+    private void on_new_game_clicked(Button b) {
+        /* Ask user to confirm if game in progress */
+        if (!model.game_finished) {
+            bool confirm = false;
+            var are_you_sure = new MessageDialog(window, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.YES_NO,
+            "Really restart the game?");
+            are_you_sure.response.connect((response_id) => {
+                confirm = (response_id == Gtk.ResponseType.YES);
+                are_you_sure.destroy();});
+
+            are_you_sure.run();
+            if (!confirm)
+                return;
+        }
+
+        /* Restart game*/
+        int high_score = model.high_score;
+        var new_model = new GameModel();
+        new_model.high_score = high_score;
+        new_model.initialize_game();
+        connect_model_signals(new_model);
+        model = new_model;
+        on_model_changed(model);
     }
 
     /**
@@ -124,10 +156,16 @@ public class GameView: Object {
     private void on_model_finished(GameModel m) {
         var builder = new Builder();
         builder.add_from_file("score.ui");
+        var score_close_button = builder.get_object("score-close-button") as Button;
         builder.connect_signals(null);
+        score_close_button.clicked.connect(() => {score_dialog.destroy();});
         this.score_dialog = builder.get_object("score-dialog") as Gtk.Window;
         var score_label = builder.get_object("score-label") as Label;
-        score_label.set_text("Score: " + this.model.score.to_string());
+        var high_score_label = builder.get_object("high-score-label") as Label;
+        var moves_label = builder.get_object("moves-label") as Label;
+        score_label.set_text(this.model.score.to_string());
+        high_score_label.set_text(this.model.high_score.to_string());
+        moves_label.set_text(this.model.moves.to_string());
 
         score_dialog.show_all();
     }
@@ -162,14 +200,12 @@ public class GameView: Object {
         // stdout.printf("Clicked: %s\n", position.to_string());
         if (selected_position == null) {
             // no selected position, select
-            stdout.printf("no selected position\n");
             if (model.get_piece_at(position) != Piece.HOLE) {
                 selected_position = position;
                 model.nop();
             } // else do nothing
         } else if (selected_position != null && selected_position.equals(position)) {
             // clicked on selected position: deselct the piece
-            stdout.printf("deselect\n");
             selected_position = null;
             model.nop();
         } else if ((selected_position != null) && (model.get_piece_at(position) != Piece.HOLE)) {

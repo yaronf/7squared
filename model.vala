@@ -51,13 +51,14 @@ const int INITIAL_MOVE_ANYWHERES = 2;
 public class GameModel: Object {
     private Piece [, ] board = new Piece[7, 7];
     public int level {get; private set;}
-    private int moves;
+    public int moves {get; private set;}
     private int lines;
     private int occupied;
     public int undos {get; private set;}
     public int move_anywheres {get; set;}
-    public int score {get; set;}
-    public int high_score {get; private set;}
+    public int score {get; private set;}
+    public int high_score {get; set;}
+    public bool game_finished {get; private set;}
     public Piece [] pending_pieces {get; private set;}
 
     public string to_json() {
@@ -117,11 +118,13 @@ public class GameModel: Object {
         this.undos = INITIAL_UNDOS;
         this.move_anywheres = INITIAL_MOVE_ANYWHERES;
         this.score = 0;
+        this.game_finished = false;
         for (int i=0; i<SIZE; i++)
             for (int j=0; j<SIZE; j++)
                 board[i, j] = Piece.HOLE;
         this.pending_pieces = new Piece[MAX_PENDING];
         prepare_pending();
+        place_random_pieces(3);
     }
 
     int number_of_pending() {
@@ -399,6 +402,14 @@ public class GameModel: Object {
         model_changed();
     }
 
+    private void finish_game() {
+        game_finished = true;
+        if (score > high_score) {
+            high_score = score;
+        }
+        model_finished();
+    }
+
     public void complete_round() {
         int delta_score;
         int count_lines;
@@ -422,10 +433,9 @@ public class GameModel: Object {
         level = lines / 40 + 1;
         score += delta_score;
         model_changed();
-//        if (occupied == SIZE*SIZE) {
-    if (occupied > 12) {
+        if (occupied == SIZE*SIZE) {
             stdout.printf("board full\n");
-            model_finished();
+            finish_game();
         }
     }
 }

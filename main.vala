@@ -29,7 +29,6 @@ public class Main {
             var view = new GameView(model, builder);
 
             model.initialize_game();
-            model.place_random_pieces(3);
 
             window.show_all();
             Gtk.main();
