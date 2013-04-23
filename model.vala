@@ -44,11 +44,13 @@ const int MIN_SEQ = 4;
 const int MAX_PENDING = 6;
 const int INITIAL_UNDOS = 2;
 const int INITIAL_MOVE_ANYWHERES = 2;
+const int INITIAL_PIECES = 3;
 
 /**
  * The game "model", a logical abstraction of the 7squared game.
  */
 public class GameModel: Object {
+    public string save_file_name {get; set;}
     private Piece [, ] board = new Piece[7, 7];
     public int level {get; private set;}
     public int moves {get; private set;}
@@ -71,26 +73,37 @@ public class GameModel: Object {
         o.set_int_member("move_anywheres", move_anywheres);
         o.set_int_member("score", score);
         o.set_int_member("high_score", high_score);
-        var a1 = new Json.Array.sized(MAX_PENDING);
+        o.set_boolean_member("game_finished", game_finished);
+        var pending_pieces_array = new Json.Array.sized(MAX_PENDING);
         foreach (Piece p in pending_pieces) {
-            a1.add_int_element((int) p);
+            pending_pieces_array.add_int_element((int) p);
         }
-        o.set_array_member("pending_pieces", a1);
+        o.set_array_member("pending_pieces", pending_pieces_array);
+        var board_rows = new Json.Array.sized(SIZE);
+        for (int x=0; x < SIZE; x++) {
+            var row_array = new Json.Array.sized(SIZE);
+            for (int y = 0; y < SIZE; y++) {
+                row_array.add_int_element((int) board[x, y]);
+            }
+            board_rows.add_array_element(row_array);
+        }
+        o.set_array_member("board", board_rows);
 
         var n = new Json.Node(Json.NodeType.OBJECT);
         n.set_object(o);
         var generator = new Json.Generator();
+        generator.set_pretty(true);
         generator.set_root(n);
         size_t len;
         return generator.to_data(out len);
     }
 
-    public GameModel() {
-            pending_pieces = new Piece[MAX_PENDING];
+    public GameModel(string save_file_name) {
+        this.save_file_name = save_file_name;
     }
 
-    public GameModel.from_json(string json) {
-        base();
+    public GameModel.from_json(string json, string save_file_name) {
+        this(save_file_name);
         var parser = new Json.Parser();
         parser.load_from_data(json);
         var root = parser.get_root();
@@ -103,11 +116,17 @@ public class GameModel: Object {
         move_anywheres = (int) o.get_int_member("move_anywheres");
         score = (int) o.get_int_member("score");
         high_score = (int) o.get_int_member("high_score");
-        var a1 = o.get_array_member("pending_pieces");
+        game_finished = (bool) o.get_boolean_member("game_finished");
+        var pending_pieces_array = o.get_array_member("pending_pieces");
         pending_pieces = new Piece[MAX_PENDING];
         for (int i=0; i<MAX_PENDING; i++) {
-            this.pending_pieces[i] = (Piece) (a1.get_int_element(i));
+            this.pending_pieces[i] = (Piece) (pending_pieces_array.get_int_element(i));
         }
+        var board_array = o.get_array_member("board");
+        this.board = new Piece[SIZE, SIZE];
+        for (int x=0; x<SIZE; x++)
+            for (int y=0; y<SIZE; y++)
+                board[x, y] = (Piece) (board_array.get_array_element(x).get_int_element(y));
     }
 
     public void initialize_game() {
@@ -124,7 +143,7 @@ public class GameModel: Object {
                 board[i, j] = Piece.HOLE;
         this.pending_pieces = new Piece[MAX_PENDING];
         prepare_pending();
-        place_random_pieces(3);
+        place_random_pieces(INITIAL_PIECES);
     }
 
     int number_of_pending() {
@@ -410,6 +429,15 @@ public class GameModel: Object {
         model_finished();
     }
 
+    private void save_game_to_file() {
+        var save_data = this.to_json();
+        var ret = FileUtils.set_contents(this.save_file_name, save_data);
+        if (!ret) {
+            stderr.printf("Could not write save file.");
+            Process.exit(1);
+        }
+    }
+
     public void complete_round() {
         int delta_score;
         int count_lines;
@@ -432,9 +460,9 @@ public class GameModel: Object {
         lines += lines_this_move;
         level = lines / 40 + 1;
         score += delta_score;
+        save_game_to_file();
         model_changed();
         if (occupied == SIZE*SIZE) {
-            stdout.printf("board full\n");
             finish_game();
         }
     }

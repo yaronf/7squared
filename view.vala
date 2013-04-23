@@ -126,9 +126,9 @@ public class GameView: Object {
         }
 
         /* Restart game*/
-        int high_score = model.high_score;
-        var new_model = new GameModel();
-        new_model.high_score = high_score;
+        string save_file_name = model.save_file_name;
+        var new_model = new GameModel(save_file_name);
+        new_model.high_score = model.high_score;
         new_model.initialize_game();
         connect_model_signals(new_model);
         model = new_model;

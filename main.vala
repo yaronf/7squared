@@ -5,6 +5,8 @@ using Cairo;
  * The game's main driver.
  */
 public class Main {
+    const string save_file_suffix = ".7squared";
+
     /**
      * The exit button was clicked.
      *
@@ -16,8 +18,24 @@ public class Main {
     }
 
     static int main (string[] args) {
-            Gtk.init(ref args);
-            var model = new GameModel();
+        GameModel model;
+        Gtk.init(ref args);
+
+        string home = Environment.get_home_dir();
+        string save_file_name = GLib.Path.build_filename(home, save_file_suffix);
+        if (FileUtils.test(save_file_name, FileTest.EXISTS)) {
+            string save_data;
+            size_t len;
+            var ret = FileUtils.get_contents(save_file_name, out save_data, out len);
+            if (!ret) {
+                stderr.printf("Could not read save file.");
+                Process.exit(1);
+            }
+            model = new GameModel.from_json(save_data, save_file_name);
+        } else {
+            model = new GameModel(save_file_name);
+            model.initialize_game();
+        }
 
         try {
             var builder = new Builder();
@@ -27,8 +45,7 @@ public class Main {
             window.destroy.connect(Gtk.main_quit);
 
             var view = new GameView(model, builder);
-
-            model.initialize_game();
+            model.model_changed();
 
             window.show_all();
             Gtk.main();
