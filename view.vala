@@ -1,27 +1,86 @@
 using Gtk;
+using Gdk;
 using Cairo;
+
+/*
+ * Drag and drop constants
+ */
+
+const int BYTE_BITS = 8;
+const int WORD_BITS = 16;
+const int DWORD_BITS = 32;
+
+/**
+ * Define a list of data types called "targets" that a destination widget will
+ * accept. The string type is arbitrary, and negotiated between DnD widgets by
+ * the developer. An enum or Quark can serve as the integer target id.
+ */
+enum Target {
+    INT32,
+    STRING,
+    ROOTWIN
+}
+
+/* datatype (string), restrictions on DnD (Gtk.TargetFlags), datatype (int) */
+const TargetEntry[] target_list = {
+    { "INTEGER",    0, Target.INT32 },
+    { "STRING",     0, Target.STRING },
+    { "text/plain", 0, Target.STRING },
+    { "application/x-rootwindow-drop", 0, Target.ROOTWIN }
+};
 
 /**
  * A GTK button in the shape of a simple square.
  */
 public class Square: Button {
     private static const int BORDER_WIDTH = 1;
-    private static const int WIDTH = 45;
+    // private static const int WIDTH = 45;
     private int html_color = 0x808080; // some grey
     public Position position;
     private bool strong; // emphasize - used for selected squares
 
-    public Square(Position position) {
+    public Square(Position position, int width, bool can_drag = false) {
         set_has_window(false);
-        this.set_size_request(WIDTH, WIDTH);
-        this.position = position;
-    }
-
-    public Square.with_color(int html_color, int width, Position position, bool strong) {
-        this.html_color = html_color;
-        set_has_window (false);
         this.set_size_request(width, width);
         this.position = position;
+
+        if (can_drag) {
+            stderr.printf("drag dest\n");
+            // Make the this widget a DnD source.
+            // Why doesn't Gtk.Label work here?
+            Gtk.drag_source_set (
+                    this,                      // widget will be drag-able
+                    ModifierType.BUTTON1_MASK, // modifier that will start a drag
+                    target_list,               // lists of target to support
+                    DragAction.COPY            // what to do with data after dropped
+            );
+            // Make this widget a DnD destination.
+            Gtk.drag_dest_set (
+                    this,                     // widget that will accept a drop
+                    DestDefaults.MOTION       // default actions for dest on DnD
+                    | DestDefaults.HIGHLIGHT,
+                    target_list,              // lists of target to support
+                    DragAction.COPY           // what to do with data after dropped
+            );
+
+            // All possible source signals
+            this.drag_begin.connect(on_drag_begin);
+            this.drag_data_get.connect(on_drag_data_get);
+            this.drag_data_delete.connect(on_drag_data_delete);
+            this.drag_end.connect(on_drag_end);
+
+            // All possible destination signals
+            this.drag_motion.connect(this.on_drag_motion);
+            this.drag_leave.connect(this.on_drag_leave);
+            this.drag_drop.connect(this.on_drag_drop);
+            this.drag_data_received.connect(this.on_drag_data_received);
+        }
+    }
+
+    public Square.with_color(int html_color, int width, Position position,
+            bool strong, bool can_drag = false) {
+        this(position, width, can_drag);
+        this.html_color = html_color;
         this.strong = strong;
     }
 
@@ -59,6 +118,62 @@ public class Square: Button {
 
         // Move/resize other realized windows if necessary
     }
+
+    // Drag source signals
+
+    private void on_drag_begin (Widget widget, DragContext context) {
+        print ("%s: on_drag_begin\n", widget.name);
+        var icon_window = new Gtk.Window();
+        icon_window.set_decorated(false);
+        var icon_widget = new Square.with_color(this.html_color, 32, new Position(0, 0), false);
+        icon_window.add(icon_widget);
+        icon_window.show_all();
+        Gtk.drag_set_icon_widget(context, icon_window, 16, 16);
+    }
+
+    private void on_drag_data_get (Widget widget, DragContext context,
+                                   SelectionData selection_data,
+                                   uint target_type, uint time) {
+        print ("%s: on_drag_data_get\n", widget.name);
+    }
+
+    private void on_drag_data_delete (Widget widget, DragContext context) {
+        // We aren't moving or deleting anything here
+        print ("%s: on_drag_data_delete\n", widget.name);
+    }
+
+    /** Emitted when DnD ends. This is used to clean up any leftover data. */
+    private void on_drag_end (Widget widget, DragContext context) {
+        print ("%s: on_drag_end\n", widget.name);
+    }
+
+
+
+
+    // Drag destination signals
+    private bool on_drag_motion(Widget widget, DragContext context,
+                                 int x, int y, uint time) {
+        // very spammy...
+        // stderr.printf("on_drag_motion\n");
+        return false;
+    }
+
+    private void on_drag_leave(Widget widget, DragContext context, uint time) {
+        stderr.printf("on_drag_leave\n");
+    }
+
+    private bool on_drag_drop(Widget widget, DragContext context,
+                               int x, int y, uint time) {
+        stderr.printf("on_drag_drop\n");
+        return true;
+    }
+
+    private void on_drag_data_received(Widget widget, DragContext context,
+                                        int x, int y,
+                                        SelectionData selection_data,
+                                        uint target_type, uint time) {
+        stderr.printf("on_drag_data_received\n");
+    }
 }
 
 /**
@@ -79,7 +194,7 @@ public class GameView: Object {
     private Label move_anywhere_label;
     private ToggleButton move_anywhere_button;
     private Button new_game_button;
-    private Window score_dialog;
+    private Gtk.Window score_dialog;
     const int BOARD_SQUARE_WIDTH = 45;
     const int PENDING_SQUARE_WIDTH = 30;
 
@@ -140,16 +255,6 @@ public class GameView: Object {
      */
     private void on_model_changed(GameModel m) {
         // stdout.printf("on_model_changed\n");
-
-        //stdout.printf("model: " + model.serialize() + "\n");
-
-//~         string json = model.to_json();
-//~         stdout.printf("model: %s\n", json);
-//~         GameModel model2 = new model.from_json(json);
-//~         stdout.printf("deser done\n");
-//~         string json2 = model2.to_json();
-//~         stdout.printf("model2: " + json2 + "\n");
-
         this.draw_view();
     }
 
@@ -173,7 +278,7 @@ public class GameView: Object {
     /**
      * Convert well-known colors into RGB values.
      */
-    int color_for_piece(Piece p) {
+    public static int color_for_piece(Piece p) {
         switch (p) {
             case Piece.VIOLET:  return 0xaa66cc;
             case Piece.RED:  return 0xff4444;
@@ -278,7 +383,7 @@ public class GameView: Object {
                 }
                 Piece p = model.get_piece_at(position);
                 int color = color_for_piece(p);
-                var square = new Square.with_color(color, BOARD_SQUARE_WIDTH, position, selected_position != null && position.equals(selected_position));
+                var square = new Square.with_color(color, BOARD_SQUARE_WIDTH, position, selected_position != null && position.equals(selected_position), true);
                 square.clicked.connect(on_clicked);
                 board.attach(square, x, y, 1, 1);
             }
@@ -298,7 +403,7 @@ public class GameView: Object {
                 }
                 Piece p = model.pending_pieces[seq];
                 int color = color_for_piece(p);
-                var square = new Square.with_color(color, PENDING_SQUARE_WIDTH, new Position(x, y), false);
+                var square = new Square.with_color(color, PENDING_SQUARE_WIDTH, new Position(x, y), false, false);
                 pending.attach(square, x, y, 1, 1);
             }
         }
