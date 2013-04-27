@@ -26,7 +26,12 @@ public class Main {
         if (FileUtils.test(save_file_name, FileTest.EXISTS)) {
             string save_data;
             size_t len;
-            var ret = FileUtils.get_contents(save_file_name, out save_data, out len);
+            bool ret;
+            try {
+                ret = FileUtils.get_contents(save_file_name, out save_data, out len);
+            } catch (GLib.Error e) {
+                ret = false;
+            }
             if (!ret) {
                 stderr.printf("Could not read save file.");
                 Process.exit(1);

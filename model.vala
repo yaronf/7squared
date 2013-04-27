@@ -105,7 +105,12 @@ public class GameModel: Object {
     public GameModel.from_json(string json, string save_file_name) {
         this(save_file_name);
         var parser = new Json.Parser();
-        parser.load_from_data(json);
+        try {
+            parser.load_from_data(json);
+        } catch (GLib.Error e) {
+            stderr.printf("Could not read JSON: %s\n", e.message);
+            Process.exit(1);
+        }
         var root = parser.get_root();
         var o = root.get_object();
         level = (int) o.get_int_member("level"); // this returns int64
@@ -306,7 +311,8 @@ public class GameModel: Object {
         }
     }
 
-    static delegate void Incrementor(int x1, int y1, out int x2, out int y2);
+    [CCode (has_target=false)]
+    delegate void Incrementor(int x1, int y1, out int x2, out int y2);
 
     private ArrayList<Position> traverse_line(int x0, int y0, Incrementor inc) {
         var positions = new ArrayList<Position>();
@@ -431,9 +437,14 @@ public class GameModel: Object {
 
     private void save_game_to_file() {
         var save_data = this.to_json();
-        var ret = FileUtils.set_contents(this.save_file_name, save_data);
+        bool ret;
+        try {
+            ret = FileUtils.set_contents(this.save_file_name, save_data);
+        } catch (GLib.Error e) {
+            ret = false;
+        }
         if (!ret) {
-            stderr.printf("Could not write save file.");
+            stderr.printf("Could not write save file");
             Process.exit(1);
         }
     }

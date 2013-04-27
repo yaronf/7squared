@@ -260,7 +260,12 @@ public class GameView: Object {
 
     private void on_model_finished(GameModel m) {
         var builder = new Builder();
-        builder.add_from_file("score.ui");
+        try {
+            builder.add_from_file("score.ui");
+        } catch (GLib.Error e) {
+            stderr.printf("Could not load score dialog %s\n", e.message);
+            Process.exit(1);
+        }
         var score_close_button = builder.get_object("score-close-button") as Button;
         builder.connect_signals(null);
         score_close_button.clicked.connect(() => {score_dialog.destroy();});
@@ -359,15 +364,15 @@ public class GameView: Object {
         move_anywhere_label.set_text(model.move_anywheres.to_string());
         move_anywhere_button.set_sensitive(model.move_anywheres > 0);
         // TODO: we try to color the button when it is active
-        if (!move_anywhere_button.get_active()) {
-            move_anywhere_button.override_background_color(StateFlags.NORMAL, null);
-        } else {
-            Gdk.Color red;
-            Gdk.Color.parse("red", out red);
-            var style = move_anywhere_button.get_style();
-            style.bg[StateFlags.NORMAL] = red;
-            move_anywhere_button.set_style(style);
-        }
+//~         if (!move_anywhere_button.get_active()) {
+//~             move_anywhere_button.override_background_color(StateFlags.NORMAL, null);
+//~         } else {
+//~             Gdk.Color red;
+//~             Gdk.Color.parse("red", out red);
+//~             var style = move_anywhere_button.get_style();
+//~             style.bg[StateFlags.NORMAL] = red;
+//~             move_anywhere_button.set_style(style);
+//~         }
     }
 
     /**
