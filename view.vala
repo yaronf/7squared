@@ -179,6 +179,7 @@ public class Square: Button {
  */
 public class GameView: Object {
     private GameModel model;
+    private string prev_model; // for "undo" operations
     private Builder builder;
     private Position selected_position = null;
     private Grid board;
@@ -189,6 +190,7 @@ public class GameView: Object {
     private Label level_label;
     private Label to_next_level_label;
     private Label undo_label;
+    private Button undo_button;
     private Label move_anywhere_label;
     private ToggleButton move_anywhere_button;
     private Button new_game_button;
@@ -201,6 +203,7 @@ public class GameView: Object {
      */
     public GameView(GameModel model, Builder builder) {
         this.model = model;
+        this.prev_model = null;
         this.builder = builder;
         this.window = builder.get_object("window") as Gtk.Window;
         this.board = builder.get_object("game-board") as Grid;
@@ -210,6 +213,8 @@ public class GameView: Object {
         this.level_label = builder.get_object("level-label") as Label;
         this.to_next_level_label = builder.get_object("to-next-level-label") as Label;
         this.undo_label = builder.get_object("undo-label") as Label;
+        this.undo_button = builder.get_object("undo-button") as Button;
+        undo_button.clicked.connect(undo_clicked);
         this.move_anywhere_label = builder.get_object("move-anywhere-label") as Label;
         this.move_anywhere_button = builder.get_object("move-anywhere-button") as ToggleButton;
         move_anywhere_button.clicked.connect(move_anywhere_clicked);
@@ -295,6 +300,19 @@ public class GameView: Object {
     }
 
     [CCode (instance_pos = -1)]
+    public void undo_clicked(Button source) {
+        stderr.printf("undo clicked\n");
+        if (prev_model != null) {
+            var save_file_name = model.save_file_name;
+            model = new GameModel.from_json(this.prev_model, save_file_name);
+            model.undos--;
+            prev_model = null;
+            connect_model_signals(model);
+            on_model_changed(model);
+        }
+    }
+
+    [CCode (instance_pos = -1)]
     public void move_anywhere_clicked(Button source) {
         model.nop();
     }
@@ -345,7 +363,13 @@ public class GameView: Object {
         Gtk.drag_finish(context, dnd_success, true, time);
 
         // Now, do the actual move
+        set_undo_point();
         move_into_hole(src_position, ((Square) widget).position);
+    }
+
+    private void set_undo_point() {
+        this.prev_model = model.to_json();
+        this.undo_button.set_sensitive(false);
     }
 
     private void move_into_hole(Position src, Position dest) {
@@ -386,6 +410,7 @@ public class GameView: Object {
         level_label.set_text("Level " + model.level.to_string());
         to_next_level_label.set_text(model.lines_to_next_level().to_string() + " lines to next level");
         undo_label.set_text(model.undos.to_string());
+        undo_button.set_sensitive(model.undos > 0);
         move_anywhere_label.set_text(model.move_anywheres.to_string());
         move_anywhere_button.set_sensitive(model.move_anywheres > 0);
         // TODO: we try to color the button when it is active

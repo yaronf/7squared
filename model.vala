@@ -56,7 +56,7 @@ public class GameModel: Object {
     public int moves {get; private set;}
     private int lines;
     private int occupied;
-    public int undos {get; private set;}
+    public int undos {get; set;}
     public int move_anywheres {get; set;}
     public int score {get; private set;}
     public int high_score {get; set;}
