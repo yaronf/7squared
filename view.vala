@@ -135,7 +135,7 @@ public class Square: Button {
         print ("%s: on_drag_data_get\n", widget.name);
         int data_to_send = this.position.x * SIZE + this.position.y; // encode position into a single int
         uchar [] buffer;
-        convert_long_to_bytes(data_to_send, out buffer);
+        convert_long_to_bytes(Posix.htonl(data_to_send), out buffer);
         selection_data.set (
             selection_data.get_target(),      // target type
             BYTE_BITS,                 // number of bits per 'unit'
@@ -144,42 +144,21 @@ public class Square: Button {
     }
 
     /**
-     * Convert a "long" into a buffer of bytes
-     * Note: we assume a little-endian machine
+     * Convert a "long" into a buffer of bytes, in "network" order (big endian)
      */
-    private void convert_long_to_bytes(long number, out uchar [] buffer) {
-        buffer = new uchar[sizeof(long)];
-        for (int i=0; i<sizeof(long); i++) {
+    private void convert_long_to_bytes(uint32 number, out uchar [] buffer) {
+        buffer = new uchar[sizeof(uint32)];
+        for (int i = 0; i<sizeof(uint32); i++) {
             buffer[i] = (uchar) (number & 0xFF);
             number = number >> 8;
         }
     }
-
-//~     private void on_drag_data_delete(Widget widget, DragContext context) {
-//~         // We aren't moving or deleting anything here
-//~         print ("%s: on_drag_data_delete\n", widget.name);
-//~     }
 
     /** Emitted when DnD ends. This is used to clean up any leftover data. */
     private void on_drag_end(Widget widget, DragContext context) {
         print ("%s: on_drag_end\n", widget.name);
     }
 
-
-
-
-//~     // Drag destination signals
-//~     private bool on_drag_motion(Widget widget, DragContext context,
-//~                                  int x, int y, uint time) {
-//~         // very spammy...
-//~         // stderr.printf("on_drag_motion\n");
-//~         return false;
-//~     }
-
-//~     private void on_drag_leave(Widget widget, DragContext context, uint time) {
-//~         stderr.printf("on_drag_leave\n");
-//~     }
-//~
     private bool on_drag_drop(Widget widget, DragContext context,
                                int x, int y, uint time) {
         stderr.printf("on_drag_drop\n");
@@ -356,9 +335,10 @@ public class GameView: Object {
         stderr.printf("on_drag_data_received\n");
         bool dnd_success = true;
         assert(target_type == Target.INT32);
-        int* datap = (int*) selection_data.get_data();
+        uint32* datap = (uint32*) selection_data.get_data();
         assert(datap != null);
-        int data = *datap;
+        int32 data = (int) Posix.ntohl(*datap);
+        stderr.printf("Got data: %d\n", data);
         int data_x = data / SIZE;
         int data_y = data % SIZE;
         var src_position = new Position(data_x, data_y);
