@@ -194,6 +194,7 @@ public class GameView: Object {
     private Label move_anywhere_label;
     private ToggleButton move_anywhere_button;
     private Button new_game_button;
+    private Button help_button;
     private Gtk.Window score_dialog;
     const int BOARD_SQUARE_WIDTH = 45;
     const int PENDING_SQUARE_WIDTH = 30;
@@ -220,6 +221,8 @@ public class GameView: Object {
         move_anywhere_button.clicked.connect(move_anywhere_clicked);
         this.new_game_button = builder.get_object("new-game-button") as Button;
         new_game_button.clicked.connect(on_new_game_clicked);
+        this.help_button = builder.get_object("help-button") as Button;
+        help_button.clicked.connect(on_help_clicked);
         connect_model_signals(model);
     }
 
@@ -251,6 +254,22 @@ public class GameView: Object {
         connect_model_signals(new_model);
         model = new_model;
         on_model_changed(model);
+    }
+
+    private void on_help_clicked(Button b) {
+        var builder = new Builder();
+        try {
+            builder.add_from_file("help.ui");
+        } catch (GLib.Error e) {
+            stderr.printf("Could not load help dialog: %s\n", e.message);
+            Process.exit(1);
+        }
+        var help_close_button = builder.get_object("help-close-button") as Button;
+        builder.connect_signals(null);
+        var help_dialog = builder.get_object("help-dialog") as Gtk.Window;
+        help_close_button.clicked.connect(() => {help_dialog.destroy();});
+
+        help_dialog.show_all();
     }
 
     /**
